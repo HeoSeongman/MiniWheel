@@ -1,0 +1,95 @@
+#include <MoterController.h>
+
+// --- 생성자 구현 ---
+MotorController::MotorController(int rpwmPin, int lpwmPin, int maxSpeed, int accelStep, int updateInterval)
+    : _rpwmPin(rpwmPin), _lpwmPin(lpwmPin),
+      _maxSpeed(maxSpeed), _accelStep(accelStep), _updateInterval(updateInterval)
+{
+  // 초기화 리스트에서 변수들을 초기화합니다.
+}
+
+// --- 초기화 함수 ---
+void MotorController::begin()
+{
+  pinMode(_rpwmPin, OUTPUT);
+  pinMode(_lpwmPin, OUTPUT);
+  _setSpeedAndDirection(0, STOPPED);
+}
+
+// --- 목표 설정 함수 ---
+void MotorController::setTarget(Direction requestedDir, bool isStoppingSequence)
+{
+  // 정지 시퀀스 중이 아니거나 (방향 전환 중이 아닐 때)
+  // 현재 정지 상태에서 새로운 방향이 요청되거나 (시퀀스 b)
+  // 현재 회전 중이거나 (시퀀스 c)
+  if (!isStoppingSequence)
+  {
+    // 목표 방향이 현재 방향과 다르면(정지 -> 회전 또는 회전 중)
+    // 목표 속도를 MAX_SPEED로 설정하여 가속
+    targetSpeed = _maxSpeed;
+    currentDirection = requestedDir;
+  }
+  else
+  {
+    // 방향 전환을 위한 정지 시퀀스일 경우 (시퀀스 d의 정지 단계)
+    // 목표 속도를 0으로 설정하여 감속
+    targetSpeed = 0;
+  }
+}
+
+// --- 실제 PWM 출력 함수 ---
+void MotorController::_setSpeedAndDirection(int speed, Direction dir)
+{
+  speed = constrain(speed, 0, 255);
+
+  if (dir == FORWARD)
+  {
+    analogWrite(_rpwmPin, speed);
+    analogWrite(_lpwmPin, 0);
+  }
+  else if (dir == BACKWARD)
+  {
+    analogWrite(_rpwmPin, 0);
+    analogWrite(_lpwmPin, speed);
+  }
+  else
+  { // STOPPED
+    analogWrite(_rpwmPin, 0);
+    analogWrite(_lpwmPin, 0);
+  }
+}
+
+// --- 메인 업데이트 함수 (가/감속 처리) ---
+void MotorController::update()
+{
+  if (millis() - lastUpdateTime >= _updateInterval) // 지정된 간격(_updateInterval)마다만 속도 변화 처리
+  {
+    lastUpdateTime = millis();
+
+    // 1. 가속 처리
+    if (currentSpeed < targetSpeed)
+    {
+      currentSpeed += _accelStep;
+      if (currentSpeed > targetSpeed) {
+        currentSpeed = targetSpeed;
+      }
+
+      _setSpeedAndDirection(currentSpeed, currentDirection);
+    }
+    else if (currentSpeed > targetSpeed) // 2. 감속 처리
+    {
+      currentSpeed -= _accelStep;
+      if (currentSpeed < targetSpeed) {
+        currentSpeed = targetSpeed;
+      }
+      
+      _setSpeedAndDirection(currentSpeed, currentDirection); // 현재 방향으로 계속 감속을 수행
+    }
+    // 3. 정지 상태
+    else if (currentSpeed == 0 && targetSpeed == 0)
+    {
+      currentDirection = STOPPED; // currentDirection을 STOPPED로 설정하여 양쪽 PWM 0을 보장
+      _setSpeedAndDirection(0, STOPPED);
+    }
+  }
+}

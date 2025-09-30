@@ -1,114 +1,147 @@
 #include <Arduino.h>
-#include "../include/FerrisMoter.h"
+#include "./MoterController.h" // 새로 정의한 클래스 포함
 
-// 핀 설정
-const int leftEnablePin = 7;
-const int rightEnablePin = 8;
-const int leftPWMPin = 5;
-const int rightPWMPin = 6;
+// --- 핀 정의 ---
+#define RPWM_PIN 9        // 정회전 PWM (PWM 핀)
+#define LPWM_PIN 10       // 역회전 PWM (PWM 핀)
+#define FORWARD_BUTTON 2  // 정회전 버튼 (LOW 입력)
+#define BACKWARD_BUTTON 3 // 역회전 버튼 (LOW 입력)
+#define STATUS_LED 13     // 상태 표시 LED (내장 LED)
 
-const int forwardBtn = 2;    // 정방향 버튼
-const int reverseBtn = 3;    // 역방향 버튼
-const int potentialPin = A0; // 가변저항 연결 핀
-const int ledPin = 13;       // 상태 LED
+// --- 제어 상수 ---
+#define MAX_SPEED 200      // 최대 PWM 값 (0-255)
+#define ACCEL_STEP 2       // 가/감속 속도 단계
+#define UPDATE_INTERVAL 20 // 가/감속 업데이트 주기 (ms)
+#define STOP_DURATION 3000 // 방향 전환 시 정지 시간 (ms)
 
-Motor motor(leftEnablePin, rightEnablePin, leftPWMPin, rightPWMPin);
+// --- 객체 생성 ---
+// MotorController(RPWM 핀, LPWM 핀, 최대 속도, 가속 단계, 업데이트 간격)
+MotorController motor(RPWM_PIN, LPWM_PIN, MAX_SPEED, ACCEL_STEP, UPDATE_INTERVAL);
 
-enum State
-{
-  IDLE,
-  RUNNING,
-  SWITCHING
-};
+// --- 상태 변수 ---
+bool isStoppingSequence = false;
+Direction requestedDirection = STOPPED;
+unsigned long stopStartTime = 0;
+unsigned long lastLedToggleTime = 0;
 
-State sysState = IDLE;
-unsigned long stateStart = 0;
+void checkButtons();
+void handleStoppingSequence();
 
 void setup()
 {
-  motor.begin();
-
-  pinMode(forwardBtn, INPUT_PULLUP);
-  pinMode(reverseBtn, INPUT_PULLUP);
-  pinMode(ledPin, OUTPUT);
-
+  // 시리얼 통신 초기화
   Serial.begin(9600);
-  Serial.println("시스템 시작");
+
+  // 버튼 핀 설정 (내부 풀업 사용)
+  pinMode(FORWARD_BUTTON, INPUT_PULLUP);
+  pinMode(BACKWARD_BUTTON, INPUT_PULLUP);
+
+  // LED 핀 설정
+  pinMode(STATUS_LED, OUTPUT);
+  digitalWrite(STATUS_LED, LOW);
+
+  // 모터 컨트롤러 초기화
+  motor.begin();
+  Serial.println("초기화 완료.");
 }
 
 void loop()
 {
-  int rawPotential = analogRead(potentialPin);
-  int potentialSpeed = map(rawPotential, 0, 1023, 0, 255);
+  checkButtons(); // 1. 버튼 입력 처리
 
-  motor.setMaxSpeed(potentialSpeed);
-  motor.update();
-
-  switch (sysState)
+  if (isStoppingSequence) 
   {
-  case IDLE:                            // 대기 상태일 때
-    if (digitalRead(forwardBtn) == LOW) // 정방향 버튼이 눌리면 모터를 정방향으로 회전
-    {
-      motor.forward();
-      sysState = RUNNING;
-    }
-    if (digitalRead(reverseBtn) == LOW) // 역방향 버튼이 눌리면 모터를 역방향으로 회전
-    {
-      motor.backward();
-      sysState = RUNNING;
-    }
-    break;
+    handleStoppingSequence(); // 2. 방향 전환 시 정지 시퀀스 처리
+  }
 
-  case RUNNING:                                                                        // 모터가 회전 중일 때
-    if (motor.getDirection() == Direction::BACKWARD && digitalRead(forwardBtn) == LOW) // 모터가 역방향이고 정방향 버튼이 눌리면
-    {
-      // 반대 방향 누르면
-      motor.stop();
-      sysState = SWITCHING;
-      stateStart = millis();
-    }
-    if (motor.getDirection() == Direction::BACKWARD && digitalRead(reverseBtn) == LOW) // 모터가 역방향이고 정방향 버튼이 눌리면
-    {
-      // 반대 방향 누르면
-      motor.stop();
-      sysState = SWITCHING;
-      stateStart = millis();
-    }
-    break;
+  motor.update(); // 3. 모터 제어 업데이트 (가/감속 실행)
+}
 
-  case SWITCHING: // 방향 전환 중일 때
-    if (motor.isStopped())
+/**
+ * @brief 버튼 입력을 확인하고 모터의 목표 상태를 요청합니다.
+ * 시퀀스: a, b, d의 요청 부분을 담당
+ */
+void checkButtons()
+{
+  Direction currentDir = motor.getCurrentDirection();
+
+  if (digitalRead(FORWARD_BUTTON) == LOW) // 정회전 버튼이 눌렸을 때 (LOW)
+  {
+    if (currentDir == BACKWARD && !isStoppingSequence)
     {
-      // 3초간 정지 + LED 깜빡
-      if (millis() - stateStart < 3000) // 3초 대기
-      {
-        if ((millis() / 1000) % 2 == 0) // LED 깜빡
-        {
-          digitalWrite(ledPin, HIGH);
-        }
-        else
-        {
-          digitalWrite(ledPin, LOW);
-        }
-      }
-      else
-      {
-        // 방향 결정
-        if (digitalRead(forwardBtn) == LOW)
-          motor.forward();
-        if (digitalRead(reverseBtn) == LOW)
-          motor.backward();
-        sysState = RUNNING;
-      }
+      // d. 역회전 중 반대 버튼: 정지 시퀀스 시작
+      isStoppingSequence = true;
+      stopStartTime = millis();
+      requestedDirection = FORWARD;
+      motor.setTarget(STOPPED, true); // 목표 속도를 0으로 설정하여 감속 시작
+      Serial.println("STOP Sequence: BACKWARD -> FORWARD");
     }
-    break;
+    else if (currentDir != FORWARD)
+    {
+      // a. 정지 또는 b. 역회전 후 정지 시퀀스 완료 시 -> 정회전 시작 (가속)
+      motor.setTarget(FORWARD);
+    }
+  }
+  else if (digitalRead(BACKWARD_BUTTON) == LOW) // 역회전 버튼이 눌렸을 때 (LOW)
+  {
+    if (currentDir == FORWARD && !isStoppingSequence)
+    {
+      // d. 정회전 중 반대 버튼: 정지 시퀀스 시작
+      isStoppingSequence = true;
+      stopStartTime = millis();
+      requestedDirection = BACKWARD;
+      motor.setTarget(STOPPED, true); // 목표 속도를 0으로 설정하여 감속 시작
+      Serial.println("STOP Sequence: FORWARD -> BACKWARD");
+    }
+    else if (currentDir != BACKWARD)
+    {
+      // a. 정지 또는 b. 정회전 후 정지 시퀀스 완료 시 -> 역회전 시작 (가속)
+      motor.setTarget(BACKWARD);
+    }
   }
 }
 
-// millis() 는 아두이노가 켜진 후 경과된 시간을 밀리초 단위로 반환합니다.
-// pinMode(pin, mode) 는 핀의 모드를 설정합니다. mode는 INPUT, OUTPUT, INPUT_PULLUP 등이 있습니다.
-// digitalRead(pin) 은 지정된 핀의 디지털 값을 읽습니다. HIGH 또는 LOW를 반환합니다.
-// digitalWrite(pin, value) 는 지정된 핀에 디지털 값을 씁니다. value는 HIGH 또는 LOW입니다.
-// Serial.begin(baudrate) 는 시리얼 통신을 시작합니다. baudrate는 통신 속도입니다.
-// Serial.println(data) 는 시리얼 포트로 데이터를 출력하고 줄 바꿈을 추가합니다.
-// INPUT_PULLUP 모드는 내부 풀업 저항을 활성화하여 버튼이 눌리지 않았을 때 HIGH 상태를 유지하게 합니다.
+/**
+ * @brief 방향 전환 시 서서히 정지 -> 대기 -> 서서히 반대 방향 회전을 처리합니다.
+ * 시퀀스: d의 실행 부분을 담당
+ */
+void handleStoppingSequence()
+{
+  // 1. 서서히 정지 단계 (목표 속도: 0, 현재 속도 > 0)
+  if (motor.getCurrentSpeed() > 0 || !motor.isRampFinished())
+  {
+    // 모터 컨트롤러의 update()가 감속을 처리
+
+    // LED 깜빡임: 정지하는 동안 (빠르게 100ms)
+    if (millis() - lastLedToggleTime >= 100)
+    {
+      digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
+      lastLedToggleTime = millis();
+    }
+    return; // 감속 중에는 다음 단계로 넘어가지 않음
+  }
+
+  // 2. 3초간 정지 및 대기 단계 (현재 속도 == 0)
+  if (millis() - stopStartTime < STOP_DURATION)
+  {
+    // 모터는 이미 정지 상태 (motor.update()에서 처리)
+
+    // LED 깜빡임: 1초마다 깜빡
+    if (millis() - lastLedToggleTime >= 1000)
+    {
+      digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
+      lastLedToggleTime = millis();
+    }
+    return; // 대기 중에는 다음 단계로 넘어가지 않음
+  }
+
+  // 3. 반대 회전 방향으로 서서히 회전 시작
+  isStoppingSequence = false; // 정지 시퀀스 종료
+
+  // 요청된 방향으로 최대 속도를 목표로 설정하여 가속 시작
+  motor.setTarget(requestedDirection);
+
+  // LED 끄기
+  digitalWrite(STATUS_LED, LOW);
+  Serial.println("Rotation started in new direction.");
+}
