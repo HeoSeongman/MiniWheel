@@ -19,8 +19,8 @@ private:
 
     int minSpeed;     // 최소 속도
     int maxSpeed;     // 최대 속도
-    int currentSpeed; // 현재 속도 (0 ~ 255)
-    int targetSpeed;  // 목표 속도 (0 ~ 255)
+    int currentSpeed; // 현재 속도
+    int targetSpeed;  // 목표 속도
 
     // int direction;    // 1 = forward, -1 = backward, 0 = stop
     Direction direction;
@@ -56,17 +56,17 @@ public:
     // 방향 설정
     void forward()
     {
-        direction = Direction::FORWARD;
+        setDirection(Direction::FORWARD);
     }
 
     void backward()
     {
-        direction = Direction::BACKWARD;
+        setDirection(Direction::BACKWARD);
     }
 
     void stop()
     {
-        direction = Direction::STOP;
+        setDirection(Direction::STOP);
         targetSpeed = 0;
     }
 
@@ -80,22 +80,37 @@ public:
         targetSpeed = speed;
     }
 
+    void setMaxSpeed(int newMaxSpeed)
+    {
+        maxSpeed = newMaxSpeed;
+
+        if (targetSpeed > maxSpeed)
+        {
+            targetSpeed = maxSpeed;
+        }
+    }
+
     bool isStopped() { return (direction == STOP && currentSpeed == 0); }
+
+    Direction getDirection() { return direction; }
+
+    // 현재 속도 반환
+    int getCurrentSpeed() { return currentSpeed; }
 
     // 가속/감속 업데이트 (loop에서 주기적으로 호출)
     void update()
     {
         // 속도 조정
-        if (currentSpeed < targetSpeed)
-        {                             // 현재 속도가 목표 속도보다 낮으면 가속
+        if (currentSpeed < targetSpeed) // 현재 속도가 목표 속도보다 낮으면 가속
+        {
             currentSpeed += rampStep; // 가속 단계만큼 증가
             if (currentSpeed > targetSpeed)
             { // 목표 속도 초과 방지
                 currentSpeed = targetSpeed;
             }
         }
-        else if (currentSpeed > targetSpeed)
-        {                             // 현재 속도가 목표 속도보다 높으면 감속
+        else if (currentSpeed > targetSpeed) // 현재 속도가 목표 속도보다 높으면 감속
+        {
             currentSpeed -= rampStep; // 감속 단계만큼 감소
             if (currentSpeed < targetSpeed)
             { // 목표 속도 미만 방지
@@ -103,30 +118,47 @@ public:
             }
         }
 
-        // 방향에 따라 Enable 및 PWM 출력
-        if (direction == 1)
-        { // 정방향
-            digitalWrite(pinLEnable, HIGH);
-            digitalWrite(pinREnable, LOW);
-            analogWrite(pinLPWM, currentSpeed);
-            analogWrite(pinRPWM, 0);
-        }
-        else if (direction == -1)
-        { // 역방향
-            digitalWrite(pinLEnable, LOW);
-            digitalWrite(pinREnable, HIGH);
-            analogWrite(pinLPWM, 0);
-            analogWrite(pinRPWM, currentSpeed);
-        }
-        else
-        { // 정지
-            digitalWrite(pinLEnable, LOW);
-            digitalWrite(pinREnable, LOW);
-            analogWrite(pinLPWM, 0);
-            analogWrite(pinRPWM, 0);
+        // 속도 적용
+        switch (direction)
+        {
+        case FORWARD:                           // 정방향
+            analogWrite(pinLPWM, currentSpeed); // 좌회전 속도
+            break;
+        case BACKWARD:                          // 역방향
+            analogWrite(pinRPWM, currentSpeed); // 우회전 속도
+            break;
+        case STOP:                         // 정지
+            analogWrite(pinLPWM, 0);       // 좌회전 정지
+            analogWrite(pinRPWM, 0);       // 우회전 정지
+            break;
         }
     }
 
-    // 현재 속도 반환
-    int getCurrentSpeed() { return currentSpeed; }
+    void setDirection(Direction dir)
+    {
+        direction = dir;
+
+        // 방향에 따라 Enable 및 PWM 출력
+        switch (direction)
+        {
+        case FORWARD:                           // 정방향
+            digitalWrite(pinREnable, LOW);      // 우회전
+            analogWrite(pinRPWM, 0);            // 우회전 정지
+            analogWrite(pinLPWM, currentSpeed); // 좌회전 속도
+            digitalWrite(pinLEnable, HIGH);     // 좌회전
+            break;
+        case BACKWARD:                          // 역방향
+            digitalWrite(pinLEnable, LOW);      // 좌회전
+            analogWrite(pinLPWM, 0);            // 좌회전 정지
+            analogWrite(pinRPWM, currentSpeed); // 우회전 속도
+            digitalWrite(pinREnable, HIGH);     // 우회전
+            break;
+        case STOP:                         // 정지
+            digitalWrite(pinLEnable, LOW); // 좌회전
+            digitalWrite(pinREnable, LOW); // 우회전
+            analogWrite(pinLPWM, 0);       // 좌회전 정지
+            analogWrite(pinRPWM, 0);       // 우회전 정지
+            break;
+        }
+    }
 };
