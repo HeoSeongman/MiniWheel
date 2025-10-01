@@ -57,8 +57,7 @@ void BackwardSequence::execute() {
 
 // --- StoppingSequence 구현 (서서히 정지 -> 3초 대기 -> 반대 회전) ---
 void StoppingSequence::enter() {
-    motor.setDirection(STOPPED, true); // 목표 속도를 0으로 설정하여 감속 시작
-    // isStoppingSequence = true;
+    motor.setDirection(STOPPED); // 목표 속도를 0으로 설정하여 감속 시작
     stopStartTime = 0; // 아직 정지 상태에 진입하지 않았으므로 0으로 유지
 }
 

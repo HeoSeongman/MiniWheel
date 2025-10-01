@@ -19,23 +19,17 @@ void MotorController::begin()
 }
 
 // --- 방향 설정 함수 ---
-void MotorController::setDirection(Direction requestedDir, bool isStoppingSequence)
+void MotorController::setDirection(Direction requestedDir)
 {
-  // 정지 시퀀스 중이 아니거나 (방향 전환 중이 아닐 때)
-  // 현재 정지 상태에서 새로운 방향이 요청되거나 (시퀀스 b)
-  // 현재 회전 중이거나 (시퀀스 c)
-  if (!isStoppingSequence)
+  currentDirection = requestedDir;
+  
+  if (STOPPED == requestedDir)
   {
-    // 목표 방향이 현재 방향과 다르면(정지 -> 회전 또는 회전 중)
-    // 목표 속도를 MAX_SPEED로 설정하여 가속
-    targetSpeed = _maxSpeed;
-    currentDirection = requestedDir;
+    targetSpeed = 0; // 목표 속도를 0으로 설정하여 감속 시작
   }
   else
   {
-    // 방향 전환을 위한 정지 시퀀스일 경우 (시퀀스 d의 정지 단계)
-    // 목표 속도를 0으로 설정하여 감속
-    targetSpeed = 0;
+    targetSpeed = _maxSpeed; // 최대 속도로 설정하여 가속 시작
   }
 }
 
