@@ -20,7 +20,7 @@ public:
   void begin();
 
   // 목표 속도와 방향 설정
-  void setTarget(Direction requestedDir, bool isStoppingSequence = false);
+  void setDirection(Direction requestedDir, bool isStoppingSequence = false);
 
   // 속도 가감속 및 정지 로직 업데이트 (loop()에서 주기적으로 호출)
   void update();

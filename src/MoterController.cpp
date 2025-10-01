@@ -11,13 +11,15 @@ MotorController::MotorController(int rpwmPin, int lpwmPin, int maxSpeed, int acc
 // --- 초기화 함수 ---
 void MotorController::begin()
 {
-  pinMode(_rpwmPin, OUTPUT);
-  pinMode(_lpwmPin, OUTPUT);
+  pinMode(_rpwmPin, OUTPUT); // 우회전 PWM 핀 설정
+  pinMode(_lpwmPin, OUTPUT); // 좌회전 PWM 핀 설정
+
+  // 초기 상태: 정지
   _setSpeedAndDirection(0, STOPPED);
 }
 
-// --- 목표 설정 함수 ---
-void MotorController::setTarget(Direction requestedDir, bool isStoppingSequence)
+// --- 방향 설정 함수 ---
+void MotorController::setDirection(Direction requestedDir, bool isStoppingSequence)
 {
   // 정지 시퀀스 중이 아니거나 (방향 전환 중이 아닐 때)
   // 현재 정지 상태에서 새로운 방향이 요청되거나 (시퀀스 b)
@@ -40,7 +42,7 @@ void MotorController::setTarget(Direction requestedDir, bool isStoppingSequence)
 // --- 실제 PWM 출력 함수 ---
 void MotorController::_setSpeedAndDirection(int speed, Direction dir)
 {
-  speed = constrain(speed, 0, 255);
+  speed = constrain(speed, 0, 255); // PWM 값 범위 제한
 
   if (dir == FORWARD)
   {
