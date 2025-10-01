@@ -18,6 +18,14 @@ public:
     virtual void enter() = 0;
     virtual void execute() = 0;
     virtual void exit() = 0;
+
+    const char *getName() const
+    {
+        return name.c_str();
+    }
+
+protected:
+    String name = "Unnamed Sequence";
 };
 
 /// --- 개별 시퀀스 클래스 선언 ---
@@ -29,6 +37,9 @@ public:
     void enter() override;
     void execute() override;
     void exit() override {}
+
+private:
+    StopSequence() { name = "StopSequence"; }
 };
 
 // ==================== ForwardSequence ==================
@@ -38,6 +49,8 @@ public:
     void enter() override;
     void execute() override;
     void exit() override {}
+private:
+    ForwardSequence() { name = "ForwardSequence"; }
 };
 
 // ==================== BackwardSequence =================
@@ -47,6 +60,8 @@ public:
     void enter() override;
     void execute() override;
     void exit() override {}
+private:
+    BackwardSequence() { name = "BackwardSequence"; }
 };
 
 // ==================== StoppingSequence =================
@@ -61,7 +76,9 @@ private:
 
 public:
     // 생성자에서 StateMachine 인수를 제거하고, Direction만 받습니다.
-    StoppingSequence(Direction nextDir) : nextDirection(nextDir) {}
+    StoppingSequence(Direction nextDir) : nextDirection(nextDir) {
+        name = "StoppingSequence";
+    }
     void enter() override;
     void execute() override;
     void exit() override;

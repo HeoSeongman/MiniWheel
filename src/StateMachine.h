@@ -10,17 +10,17 @@ private:
 
 public:
     // nextState는 이미 메모리에 존재하는 객체의 포인터여야 합니다.
-    void transitionTo(Sequence *nextStatePtr, const char *name = "Unknown")
+    void transitionTo(Sequence *nextStatePtr)
     {
         if (nextState != nullptr)
         {
             // 이미 전환 요청이 있다면, 현재 요청이 마지막 요청이 됩니다.
-            Serial.println("Warning: Transition already requested, overwriting.");
+            Serial.println("경고: 이미 요청된 시퀀스가 존재합니다.");
         }
         nextState = nextStatePtr;
         // 디버깅 용
-        Serial.print("Transition requested to: ");
-        Serial.println(name);
+        Serial.print("요청된 시퀀스 : ");
+        Serial.println(nextState->getName());
     }
 
     void update()

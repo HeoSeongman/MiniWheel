@@ -24,10 +24,10 @@ void StopSequence::enter() {
 void StopSequence::execute() {
     if (digitalRead(FORWARD_BUTTON_PIN) == LOW) {
         // 미리 생성된 forwardSeq 객체를 사용하여 전환
-        stateMachine.transitionTo(&forwardSeq, "Forward"); 
+        stateMachine.transitionTo(&forwardSeq); 
     } else if (digitalRead(BACKWARD_BUTTON_PIN) == LOW) {
         // 미리 생성된 backwardSeq 객체를 사용하여 전환
-        stateMachine.transitionTo(&backwardSeq, "Backward");
+        stateMachine.transitionTo(&backwardSeq);
     }
 }
 
@@ -39,7 +39,7 @@ void ForwardSequence::enter() {
 void ForwardSequence::execute() {
     if (digitalRead(BACKWARD_BUTTON_PIN) == LOW) { // 역회전 버튼이 눌렸을 때
         // stateMachine 에게 StoppingSequence(Forward->Backward) 객체를 사용하여 전환 요청
-        stateMachine.transitionTo(&stoppingFBSeq, "Stopping (F->B)");
+        stateMachine.transitionTo(&stoppingFBSeq);
     }
 }
 
@@ -51,7 +51,7 @@ void BackwardSequence::enter() {
 void BackwardSequence::execute() {
     if (digitalRead(FORWARD_BUTTON_PIN) == LOW) {
         // stateMachine 에게 StoppingSequence(Backward->Forward) 객체를 사용하여 전환 요청
-        stateMachine.transitionTo(&stoppingBFSeq, "Stopping (B->F)");
+        stateMachine.transitionTo(&stoppingBFSeq);
     }
 }
 
@@ -72,7 +72,7 @@ void StoppingSequence::execute() {
         // 정지 완료 시점 기록
         if (motor.isRampFinished() && motor.getCurrentSpeed() == 0) {
             stopStartTime = millis(); // 정지 완료 시점 기록
-            Serial.println("Motor fully stopped. Starting 3s hold.");
+            Serial.println("모터 정지됨. 3초간 대기 시작");
         }
         return; 
     }
@@ -89,18 +89,17 @@ void StoppingSequence::execute() {
 
     // 3. 반대 회전 방향으로 서서히 회전 시작 (대기 종료)
     if (stopStartTime > 0 && millis() - stopStartTime >= STOP_DURATION) {
+        Serial.println("모터 시작됨. 3초간 대기 종료");
         if (nextDirection == FORWARD) {
             // 미리 생성된 forwardSeq 객체를 사용하여 전환
-            stateMachine.transitionTo(&forwardSeq, "Forward");
+            stateMachine.transitionTo(&forwardSeq);
         } else if (nextDirection == BACKWARD) {
             // 미리 생성된 backwardSeq 객체를 사용하여 전환
-            stateMachine.transitionTo(&backwardSeq, "Backward");
+            stateMachine.transitionTo(&backwardSeq);
         }
-        // *주의*: 여기서 delete this를 하지 않습니다!
     }
 }
 
 void StoppingSequence::exit() {
-    // isStoppingSequence = false;
     digitalWrite(LED_PIN, LOW); // LED 끄기
 }

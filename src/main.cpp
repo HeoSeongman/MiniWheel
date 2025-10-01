@@ -54,7 +54,7 @@ void setup()
   digitalWrite(LED_PIN, LOW);
 
   // 상태 머신 초기 시퀀스 설정: 미리 생성된 객체의 포인터를 전달
-  stateMachine.transitionTo(&stopSeq, "Stop");
+  stateMachine.transitionTo(&stopSeq);
 
   // 모터 컨트롤러 초기화
   motor.begin();

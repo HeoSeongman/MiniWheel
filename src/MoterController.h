@@ -46,7 +46,7 @@ private:
   Direction currentDirection = STOPPED;
 
   // 실제 PWM 출력 함수
-  void _setSpeedAndDirection(int speed, Direction dir);
+  void updateSpeed();
 
   unsigned long lastUpdateTime = 0;
 };

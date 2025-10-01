@@ -3,7 +3,7 @@
 // --- 생성자 구현 ---
 MotorController::MotorController(int rpwmPin, int lpwmPin, int maxSpeed, int accelStep, int updateInterval)
     : _rpwmPin(rpwmPin), _lpwmPin(lpwmPin),
-      _maxSpeed(maxSpeed), _accelStep(accelStep), _updateInterval(updateInterval)
+      _maxSpeed(maxSpeed), _accelStep(accelStep), _updateInterval(updateInterval), currentSpeed(0), targetSpeed(0), currentDirection(STOPPED)
 {
   // 초기화 리스트에서 변수들을 초기화합니다.
 }
@@ -15,14 +15,14 @@ void MotorController::begin()
   pinMode(_lpwmPin, OUTPUT); // 좌회전 PWM 핀 설정
 
   // 초기 상태: 정지
-  _setSpeedAndDirection(0, STOPPED);
+  updateSpeed();
 }
 
 // --- 방향 설정 함수 ---
 void MotorController::setDirection(Direction requestedDir)
 {
   currentDirection = requestedDir;
-  
+
   if (STOPPED == requestedDir)
   {
     targetSpeed = 0; // 목표 속도를 0으로 설정하여 감속 시작
@@ -34,58 +34,55 @@ void MotorController::setDirection(Direction requestedDir)
 }
 
 // --- 실제 PWM 출력 함수 ---
-void MotorController::_setSpeedAndDirection(int speed, Direction dir)
+void MotorController::updateSpeed()
 {
-  speed = constrain(speed, 0, 255); // PWM 값 범위 제한
+  // currentSpeed = constrain(newCurrentSpeed, 0, 255); // PWM 값 범위 제한
 
-  if (dir == FORWARD)
+  switch (currentDirection)
   {
-    analogWrite(_rpwmPin, speed);
-    analogWrite(_lpwmPin, 0);
-  }
-  else if (dir == BACKWARD)
-  {
-    analogWrite(_rpwmPin, 0);
-    analogWrite(_lpwmPin, speed);
-  }
-  else
-  { // STOPPED
-    analogWrite(_rpwmPin, 0);
-    analogWrite(_lpwmPin, 0);
+  case FORWARD:
+    analogWrite(_rpwmPin, currentSpeed);
+    // analogWrite(_lpwmPin, 0);
+    break;
+  case BACKWARD:
+    // analogWrite(_rpwmPin, 0);
+    analogWrite(_lpwmPin, currentSpeed);
+    break;
+  case STOPPED:
+    // analogWrite(_rpwmPin, 0);
+    // analogWrite(_lpwmPin, 0);
+    break;
+  default:
+    break;
   }
 }
 
 // --- 메인 업데이트 함수 (가/감속 처리) ---
 void MotorController::update()
 {
-  if (millis() - lastUpdateTime >= _updateInterval) // 지정된 간격(_updateInterval)마다만 속도 변화 처리
+  if (millis() - lastUpdateTime < _updateInterval) // 경과된 시간이 설정된 주기보다 작으면 반환
   {
-    lastUpdateTime = millis();
+    return;
+  }
 
-    // 1. 가속 처리
+  lastUpdateTime = millis();
+
+  if (currentSpeed < targetSpeed) // 1. 가속 처리
+  {
+    currentSpeed += _accelStep;
+    if (currentSpeed > targetSpeed)
+    {
+      currentSpeed = targetSpeed;
+    }
+    updateSpeed();
+  }
+  else if (currentSpeed > targetSpeed) // 2. 감속 처리
+  {
+    currentSpeed -= _accelStep;
     if (currentSpeed < targetSpeed)
     {
-      currentSpeed += _accelStep;
-      if (currentSpeed > targetSpeed) {
-        currentSpeed = targetSpeed;
-      }
-
-      _setSpeedAndDirection(currentSpeed, currentDirection);
+      currentSpeed = targetSpeed;
     }
-    else if (currentSpeed > targetSpeed) // 2. 감속 처리
-    {
-      currentSpeed -= _accelStep;
-      if (currentSpeed < targetSpeed) {
-        currentSpeed = targetSpeed;
-      }
-      
-      _setSpeedAndDirection(currentSpeed, currentDirection); // 현재 방향으로 계속 감속을 수행
-    }
-    // 3. 정지 상태
-    else if (currentSpeed == 0 && targetSpeed == 0)
-    {
-      currentDirection = STOPPED; // currentDirection을 STOPPED로 설정하여 양쪽 PWM 0을 보장
-      _setSpeedAndDirection(0, STOPPED);
-    }
+    updateSpeed();
   }
 }
