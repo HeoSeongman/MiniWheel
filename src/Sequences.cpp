@@ -6,14 +6,11 @@ extern const int BACKWARD_BUTTON_PIN;
 extern const int LED_PIN;
 extern const unsigned long STOP_DURATION;
 
-// --- 전역 객체 선언 (다른 시퀀스에서 접근하기 위함) ---
+// --- 전역 객체 사용 ---
 extern StateMachine stateMachine;
 extern StopSequence stopSeq;
 extern ForwardSequence forwardSeq;
 extern BackwardSequence backwardSeq;
-
-// StoppingSequence는 전환될 때마다 필요한 Direction 인수가 다르므로,
-// 메인에서 두 개의 인스턴스(F->B용, B->F용)를 미리 생성한다고 가정합니다.
 extern StoppingSequence stoppingFBSeq; // Forward -> Backward 용
 extern StoppingSequence stoppingBFSeq; // Backward -> Forward 용
 
@@ -27,12 +24,12 @@ void StopSequence::execute()
 {
     if (digitalRead(FORWARD_BUTTON_PIN) == LOW)
     {
-        // 미리 생성된 forwardSeq 객체를 사용하여 전환
+        // forwardSeq 객체를 사용하여 전환
         stateMachine.transitionTo(&forwardSeq);
     }
     else if (digitalRead(BACKWARD_BUTTON_PIN) == LOW)
     {
-        // 미리 생성된 backwardSeq 객체를 사용하여 전환
+        // backwardSeq 객체를 사용하여 전환
         stateMachine.transitionTo(&backwardSeq);
     }
 }
@@ -89,7 +86,9 @@ void StoppingSequence::execute()
         if (motorController.isRampFinished() && motorController.getCurrentSpeed() == 0)
         {
             stopStartTime = millis(); // 정지 완료 시점 기록
-            Serial.println("모터 정지됨. 3초간 대기 시작");
+            Serial.print("모터 정지됨. ");
+            Serial.print(STOP_DURATION / 1000);
+            Serial.println("초간 대기 시작");
         }
         return;
     }
@@ -109,15 +108,17 @@ void StoppingSequence::execute()
     // 3. 반대 회전 방향으로 서서히 회전 시작 (대기 종료)
     if (stopStartTime > 0 && millis() - stopStartTime >= STOP_DURATION)
     {
-        Serial.println("모터 시작됨. 3초간 대기 종료");
+        Serial.print("모터 시작됨. ");
+        Serial.print(STOP_DURATION / 1000);
+        Serial.println("초간 대기 종료");
         if (nextDirection == FORWARD)
         {
-            // 미리 생성된 forwardSeq 객체를 사용하여 전환
+            // forwardSeq 객체를 사용하여 전환
             stateMachine.transitionTo(&forwardSeq);
         }
         else if (nextDirection == BACKWARD)
         {
-            // 미리 생성된 backwardSeq 객체를 사용하여 전환
+            // backwardSeq 객체를 사용하여 전환
             stateMachine.transitionTo(&backwardSeq);
         }
     }

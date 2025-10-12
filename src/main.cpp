@@ -3,10 +3,10 @@
 #include "./Sequence.h"        // 시퀀스 관련 클래스 포함
 
 // --- 핀 정의 ---
-const int RPWM_PIN = 9;            // 정회전 PWM (PWM 핀)
-const int LPWM_PIN = 10;           // 역회전 PWM (PWM 핀)
-const int FORWARD_BUTTON_PIN = 2;  // 정회전 버튼 (LOW 입력)
-const int BACKWARD_BUTTON_PIN = 3; // 역회전 버튼 (LOW 입력)
+const int RPWM_PIN = 5;            // 정회전 PWM (PWM 핀)
+const int LPWM_PIN = 6;            // 역회전 PWM (PWM 핀)
+const int FORWARD_BUTTON_PIN = 8;  // 정회전 버튼 (LOW 입력)
+const int BACKWARD_BUTTON_PIN = 7; // 역회전 버튼 (LOW 입력)
 const int LED_PIN = 13;            // 상태 표시 LED (내장 LED)
 
 // --- 제어 상수 ---
@@ -22,9 +22,9 @@ StateMachine stateMachine;
 
 // --- 상태 변수 ---
 // bool isStoppingSequence = false;
-Direction requestedDirection = STOPPED;
-unsigned long stopStartTime = 0;
-unsigned long lastLedToggleTime = 0;
+// Direction requestedDirection = STOPPED;
+// unsigned long stopStartTime = 0;
+// unsigned long lastLedToggleTime = 0;
 
 // 기본 시퀀스 객체 생성 (재사용 대상)
 StopSequence stopSeq;
