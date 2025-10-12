@@ -3,21 +3,21 @@
 #include "./Sequence.h"        // 시퀀스 관련 클래스 포함
 
 // --- 핀 정의 ---
-#define RPWM_PIN 9        // 정회전 PWM (PWM 핀)
-#define LPWM_PIN 10       // 역회전 PWM (PWM 핀)
-#define FORWARD_BUTTON_PIN 2  // 정회전 버튼 (LOW 입력)
-#define BACKWARD_BUTTON_PIN 3 // 역회전 버튼 (LOW 입력)
-#define LED_PIN 13     // 상태 표시 LED (내장 LED)
+const int RPWM_PIN = 9;            // 정회전 PWM (PWM 핀)
+const int LPWM_PIN = 10;           // 역회전 PWM (PWM 핀)
+const int FORWARD_BUTTON_PIN = 2;  // 정회전 버튼 (LOW 입력)
+const int BACKWARD_BUTTON_PIN = 3; // 역회전 버튼 (LOW 입력)
+const int LED_PIN = 13;            // 상태 표시 LED (내장 LED)
 
 // --- 제어 상수 ---
-#define MAX_SPEED 200      // 최대 PWM 값 (0-255)
-#define ACCEL_STEP 2       // 가/감속 속도 단계
-#define UPDATE_INTERVAL 20 // 가/감속 업데이트 주기 (ms)
-#define STOP_DURATION 3000 // 방향 전환 시 정지 시간 (ms)
+const int MAX_SPEED = 200;      // 최대 PWM 값 (0-255)
+const int ACCEL_STEP = 2;       // 가/감속 속도 단계
+const int UPDATE_INTERVAL = 20; // 가/감속 업데이트 주기 (ms)
+const int STOP_DURATION = 3000; // 방향 전환 시 정지 시간 (ms)
 
 // --- 객체 생성 ---
 // MotorController(RPWM 핀, LPWM 핀, 최대 속도, 가속 단계, 업데이트 간격)
-MotorController motor(RPWM_PIN, LPWM_PIN, MAX_SPEED, ACCEL_STEP, UPDATE_INTERVAL);
+MotorController motorController(RPWM_PIN, LPWM_PIN, MAX_SPEED, ACCEL_STEP, UPDATE_INTERVAL);
 StateMachine stateMachine;
 
 // --- 상태 변수 ---
@@ -57,12 +57,12 @@ void setup()
   stateMachine.transitionTo(&stopSeq);
 
   // 모터 컨트롤러 초기화
-  motor.begin();
+  motorController.begin();
   Serial.println("초기화 완료.");
 }
 
 void loop()
 {
-  stateMachine.update(); // 상태 머신 업데이트 (현재 시퀀스 실행)
-  motor.update();        // 모터 제어 업데이트 (가/감속 실행)
+  stateMachine.update();    // 상태 머신 업데이트 (현재 시퀀스 실행)
+  motorController.update(); // 모터 제어 업데이트 (가/감속 실행)
 }
