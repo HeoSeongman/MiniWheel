@@ -2,18 +2,16 @@
 #define SEQUENCE_H
 
 #include <Arduino.h>
-#include <./MoterController.h>
-#include "./StateMachine.h"
+#include "DirectionType.h"
 
-// 전역 객체 선언 (다른 파일에서 사용하기 위함)
-// 메인에서 인스턴스를 초기화할 때 이들을 연결합니다.
-extern MotorController motorController;
-// extern bool isStoppingSequence; // 메인에서 사용하는 플래그 (현재 시퀀스가 정지 중인지)
+class MoterController; // 전방 선언
+class StateMachine; // 전방 선언
 
 // --- Sequence 인터페이스 ---
 class Sequence
 {
 public:
+    Sequence(StateMachine *sm) : stateMachine(sm) {}
     virtual ~Sequence() {}
     virtual void enter() = 0;
     virtual void execute() = 0;
@@ -26,6 +24,7 @@ public:
 
 protected:
     String name = "Unnamed Sequence";
+    StateMachine *stateMachine; // StateMachine 객체에 접근할 수 있도록 추가
 };
 
 /// --- 개별 시퀀스 클래스 선언 ---
@@ -34,36 +33,33 @@ protected:
 class StopSequence : public Sequence
 {
 public:
-    void enter() override;
-    void execute() override;
+    virtual void enter() override;
+    virtual void execute() override;
     void exit() override {}
 
-private:
-    StopSequence() { name = "StopSequence"; }
+    StopSequence(StateMachine *sm) : Sequence(sm) { name = "StopSequence"; }
 };
 
 // ==================== ForwardSequence ==================
 class ForwardSequence : public Sequence
 {
 public:
-    void enter() override;
-    void execute() override;
+    virtual void enter() override;
+    virtual void execute() override;
     void exit() override {}
 
-private:
-    ForwardSequence() { name = "ForwardSequence"; }
+    ForwardSequence(StateMachine *sm) : Sequence(sm) { name = "ForwardSequence"; }
 };
 
 // ==================== BackwardSequence =================
 class BackwardSequence : public Sequence
 {
 public:
-    void enter() override;
-    void execute() override;
+    virtual void enter() override;
+    virtual void execute() override;
     void exit() override {}
 
-private:
-    BackwardSequence() { name = "BackwardSequence"; }
+    BackwardSequence(StateMachine *sm) : Sequence(sm) { name = "BackwardSequence"; }
 };
 
 // ==================== StoppingSequence =================
@@ -78,12 +74,12 @@ private:
 
 public:
     // 생성자에서 StateMachine 인수를 제거하고, Direction만 받습니다.
-    StoppingSequence(Direction nextDir) : nextDirection(nextDir)
+    StoppingSequence(StateMachine *sm, Direction nextDir) : Sequence(sm), nextDirection(nextDir)
     {
         name = "StoppingSequence";
     }
-    void enter() override;
-    void execute() override;
+    virtual void enter() override;
+    virtual void execute() override;
     void exit() override;
 };
 
