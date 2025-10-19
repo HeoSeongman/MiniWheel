@@ -3,7 +3,8 @@
 
 enum Direction
 {
-  STOPPED,
+  STOP,
+  STOPPING,
   FORWARD,
   BACKWARD
 };

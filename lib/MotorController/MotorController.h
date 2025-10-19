@@ -39,7 +39,7 @@ private:
   // 상태 변수
   int _targetSpeed = 0;
   int _currentSpeed = 0;
-  Direction currentDirection = STOPPED;
+  Direction currentDirection = STOP;
 
   // 실제 PWM 출력 함수
   void updateSpeed();
