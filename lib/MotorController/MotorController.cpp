@@ -28,13 +28,18 @@ void MotorController::setDirection(Direction requestedDir)
   {
   case FORWARD:
     _currentPin = RPWM_PIN;
+    digitalWrite(R_EN_PIN, HIGH); // 정회전 EN 핀 활성화
     break;
   case BACKWARD:
     _currentPin = LPWM_PIN;
+    digitalWrite(L_EN_PIN, HIGH); // 역회전 EN 핀 활성화
     break;
   case STOPPING:
     _targetSpeed = 0; // 목표 속도를 0으로 설정
     break;
+  case STOP:
+    digitalWrite(R_EN_PIN, LOW); // 정회전 EN 핀 비활성화
+    digitalWrite(L_EN_PIN, LOW); // 역회전 EN 핀 비활성화
   default:
     break;
   }
